@@ -1220,7 +1220,7 @@ if (memoSection) {
     entries.forEach(e => {
       if (!e.isIntersecting) return;
       memoIO.disconnect();
-      paras.forEach((p, i) => setTimeout(() => p.classList.add("in"), i * 280));
+      paras.forEach((p, i) => setTimeout(() => p.classList.add("in"), i * 380));
     });
   }, { threshold: 0.2 });
   memoIO.observe(memoSection);
