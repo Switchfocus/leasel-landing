@@ -32,7 +32,7 @@
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html { -webkit-text-size-adjust: 100%; }
+  html { -webkit-text-size-adjust: 100%; overflow-x: hidden; }
 
   body {
     background: var(--paper);
@@ -417,7 +417,7 @@
   }
   .market-table .row .v {
     font-family: var(--serif);
-    font-size: 30px;
+    font-size: clamp(20px, 5.5vw, 30px);
     line-height: 1;
     color: var(--ink);
     letter-spacing: -0.005em;
@@ -726,31 +726,65 @@
   }
   .contact .v { color: var(--ink); }
 
+  /* table scroll wrapper — acceptable horizontal scroll for data tables */
+  .ctable-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   /* ─── responsive ─────────────────────────────────────────────── */
 
   @media (max-width: 760px) {
     body { font-size: 14px; }
     .sheet { padding: 40px 20px; }
-    .wm { font-size: 28vw; opacity: 0.05; right: -4vw; }
-    .sheet-meta { margin-bottom: 40px; }
+    .wm { font-size: 28vw; opacity: 0.05; right: 0; max-width: 100%; }
+    .sheet-meta { margin-bottom: 40px; font-size: 11px; }
 
+    /* section 02 — big number */
+    .big-number { font-size: clamp(48px, 16vw, 280px); }
+    .big-number .unit {
+      display: block;
+      margin-left: 0;
+      margin-top: 6px;
+      font-size: 13px;
+      vertical-align: top;
+    }
+
+    /* section 05 — market table */
     .market .stage { grid-template-columns: 1fr; gap: 56px; }
+
+    /* section 07 — business model */
     .biz .stage { grid-template-columns: 1fr; gap: 40px; }
     .biz-margin { position: static; }
+
+    /* section 08 — timeline */
     .timeline { grid-template-columns: 1fr; border: none; }
     .phase { border-left: none; border-top: 1px solid var(--rule); padding: 28px 0 !important; }
     .phase:first-child { border-top: 1px solid var(--ink); }
     .phase:last-child { border-bottom: 1px solid var(--ink); }
 
+    /* sections 04, 07, 10 — grid rows */
     .prod-row { grid-template-columns: 1fr; gap: 12px; }
     .biz-list li { grid-template-columns: 40px 1fr; }
     .ask-list li { grid-template-columns: 48px 1fr; }
 
+    /* section 01 — memo */
     .memo-head .row { grid-template-columns: 64px 1fr; gap: 12px; }
     .memo-body p { font-size: 15px; }
+
+    /* section 03 — checklist */
     .check-list { font-size: 16px; }
-    .ctable { font-size: 13px; }
+
+    /* section 05 — expansion rows */
+    .expansion .country { width: auto; display: block; margin-bottom: 2px; }
+    .expansion > div { margin-bottom: 12px; }
+
+    /* section 06 — competitive table (scrollable) */
+    .ctable { font-size: 13px; min-width: 560px; }
     .ctable .note { font-size: 12px; }
+
+    /* section 09 — founder name */
+    .founder .name { font-size: clamp(40px, 10vw, 128px); }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -951,6 +985,7 @@
     <p class="lede">Or in Belgium. Or in Germany. The closest reference points are state-run (FR), single-market (UK), or solving an adjacent problem entirely.</p>
 
     <div class="reveal" data-reveal>
+      <div class="ctable-wrap">
       <table class="ctable">
         <thead>
           <tr>
@@ -999,6 +1034,7 @@
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
   </div>
 </section>
