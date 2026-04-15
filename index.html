@@ -1,0 +1,1305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Leasel — Verified rental dossier for Luxembourg</title>
+<meta name="description" content="A portable, verified tenant dossier built for Luxembourg's rental market. Build once. Share on demand." />
+
+<!--
+  ──────────────────────────────────────────────────────────────────────
+  DESIGN NOTES
+  ──────────────────────────────────────────────────────────────────────
+  This page is structured like a printed government form re-set by a
+  product designer. The grid is explicit: a 12-column structure with
+  ruled hairlines, numbered sections (00–07), and small monospaced
+  meta-labels that act like form-field captions.
+
+  Type system:
+    Display  — Cormorant Garamond (transitional serif, has personality
+               but stays serious; reads like institutional letterhead)
+    Body/UI  — Inter (neutral grotesque, generous x-height, legible at
+               small sizes for the form-style metadata)
+    Mono     — JetBrains Mono (used only for section numbers and
+               metadata captions — gives the "form field" texture)
+
+  Color (3 colors, no more):
+    --paper #F2EFE8  warm off-white. Closer to bond paper than to white.
+                     Avoids the clinical SaaS look entirely.
+    --ink   #1A1A18  near-black with a hint of warmth. Pairs with paper.
+    --seal  #3F5B5A  deep sage, leaning to teal. Chosen over slate blue
+                     (too corporate-fintech) and terracotta (too warm,
+                     reads "wellness brand"). Sage is institutional but
+                     unusual — think old passport stamps and ledger ink.
+                     Used ONLY for: the active-state form indicator,
+                     the trust seal, the language toggle's active state,
+                     and one accent rule. Restraint is the whole point.
+
+  Motion: minimal. IntersectionObserver fades sections in once. The
+  language toggle cross-fades the entire main content. The form button
+  has a typographic state change on submit — no spinner.
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;450;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --paper: #F2EFE8;
+    --paper-2: #ECE8DF;          /* one shade darker for column shifts */
+    --ink: #1A1A18;
+    --ink-soft: #1A1A1899;       /* 60% — body text de-emphasis */
+    --ink-faint: #1A1A1833;      /* 20% — hairlines */
+    --seal: #3F5B5A;             /* the single accent — see notes */
+
+    --serif: "Cormorant Garamond", Georgia, serif;
+    --sans:  "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    --mono:  "JetBrains Mono", ui-monospace, monospace;
+
+    --hair: 1px solid var(--ink-faint);
+    --hair-strong: 1px solid var(--ink);
+
+    --max: 1200px;
+    --pad: clamp(20px, 4vw, 56px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    /* very subtle paper texture via SVG noise — adds warmth without
+       reading as "grunge". Kept at very low opacity. */
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.045 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+
+  /* ─── shared layout primitives ─────────────────────────────────── */
+
+  .wrap {
+    max-width: var(--max);
+    margin: 0 auto;
+    padding-left: var(--pad);
+    padding-right: var(--pad);
+  }
+
+  .rule { border-top: var(--hair); }
+  .rule-strong { border-top: var(--hair-strong); }
+
+  /* the small "form field" metadata labels — used everywhere */
+  .meta {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    font-weight: 400;
+  }
+
+  .meta--ink { color: var(--ink); }
+  .meta--seal { color: var(--seal); }
+
+  .num {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--ink-soft);
+  }
+
+  /* serif display — the workhorse of the page */
+  .display {
+    font-family: var(--serif);
+    font-weight: 500;
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+
+  /* italic emphasis in the serif — used for "soft" emphasis the way a
+     legal document italicizes a defined term */
+  em.term {
+    font-style: italic;
+    font-weight: 500;
+  }
+
+  /* ─── 00 NAV ───────────────────────────────────────────────────── */
+
+  .nav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--paper);
+    border-bottom: var(--hair);
+  }
+  .nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+  }
+  .wordmark {
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    line-height: 1;
+    /* the dot is a subtle institutional touch — like a registered mark */
+    display: inline-flex;
+    align-items: baseline;
+    gap: 2px;
+  }
+  .wordmark::after {
+    content: "";
+    display: inline-block;
+    width: 4px; height: 4px;
+    background: var(--seal);
+    border-radius: 50%;
+    margin-left: 4px;
+    transform: translateY(-2px);
+  }
+
+  .lang {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+  }
+  .lang button {
+    background: none;
+    border: none;
+    font: inherit;
+    color: var(--ink-soft);
+    padding: 6px 10px;
+    cursor: pointer;
+    transition: color 0.2s ease;
+  }
+  .lang button:hover { color: var(--ink); }
+  .lang button.active {
+    color: var(--seal);
+    font-weight: 500;
+  }
+  .lang .sep { color: var(--ink-faint); }
+
+  /* ─── 01 HERO ──────────────────────────────────────────────────── */
+
+  .hero {
+    padding-top: clamp(80px, 14vh, 160px);
+    padding-bottom: clamp(80px, 14vh, 160px);
+    border-bottom: var(--hair);
+  }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(28px, 4vw, 56px);
+  }
+  .hero-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-top: var(--hair-strong);
+    padding-top: 14px;
+  }
+  .hero h1 {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: clamp(40px, 6.4vw, 88px);
+    line-height: 1.02;
+    letter-spacing: -0.018em;
+    max-width: 18ch;
+  }
+  .hero h1 em {
+    font-style: italic;
+    color: var(--seal);
+  }
+  .hero-sub {
+    font-size: clamp(15px, 1.4vw, 17px);
+    line-height: 1.5;
+    color: var(--ink-soft);
+    max-width: 52ch;
+  }
+  .hero-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-top: var(--hair);
+    padding-top: 14px;
+    margin-top: clamp(40px, 8vh, 80px);
+  }
+
+  /* ─── numbered section header (used by 02–06) ──────────────────── */
+
+  .section {
+    padding-top: clamp(80px, 12vh, 140px);
+    padding-bottom: clamp(80px, 12vh, 140px);
+    border-bottom: var(--hair);
+  }
+  .section-head {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 24px;
+    align-items: baseline;
+    margin-bottom: clamp(40px, 6vh, 72px);
+    padding-top: 14px;
+    border-top: var(--hair-strong);
+  }
+  .section-head h2 {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: clamp(28px, 3.2vw, 40px);
+    line-height: 1.1;
+    letter-spacing: -0.012em;
+    max-width: 22ch;
+  }
+
+  /* ─── 02 PROBLEM ───────────────────────────────────────────────── */
+
+  .problems {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+  }
+  .problem {
+    padding: 32px 28px 32px 0;
+    border-left: var(--hair);
+    padding-left: 28px;
+  }
+  .problem:first-child { border-left: none; padding-left: 0; }
+  .problem .stat {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: clamp(44px, 5vw, 64px);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    margin-bottom: 18px;
+  }
+  .problem .stat-unit {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .problem h3 {
+    font-family: var(--serif);
+    font-size: 20px;
+    font-weight: 500;
+    line-height: 1.25;
+    margin-bottom: 10px;
+    max-width: 22ch;
+  }
+  .problem p {
+    font-size: 14.5px;
+    color: var(--ink-soft);
+    max-width: 36ch;
+    line-height: 1.55;
+  }
+
+  /* ─── 03 WHAT LEASEL IS ────────────────────────────────────────── */
+
+  .what-lede {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: clamp(22px, 2.4vw, 30px);
+    line-height: 1.3;
+    letter-spacing: -0.005em;
+    max-width: 28ch;
+    margin-bottom: clamp(48px, 8vh, 80px);
+    padding-left: 104px;
+  }
+  .what-lede em { font-style: italic; color: var(--seal); }
+
+  .mechanics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    border-top: var(--hair);
+  }
+  .mech {
+    padding: 36px 28px 36px 28px;
+    border-left: var(--hair);
+    border-bottom: var(--hair);
+  }
+  .mech:first-child { border-left: none; padding-left: 0; }
+  .mech:last-child { padding-right: 0; }
+  .mech-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+  }
+  .mech-icon {
+    width: 44px; height: 44px;
+    display: block;
+  }
+  .mech-icon path,
+  .mech-icon line,
+  .mech-icon rect,
+  .mech-icon circle,
+  .mech-icon polyline { stroke: var(--ink); stroke-width: 1.25; fill: none; }
+  .mech h3 {
+    font-family: var(--serif);
+    font-size: 26px;
+    font-weight: 500;
+    margin-bottom: 12px;
+    letter-spacing: -0.005em;
+  }
+  .mech p {
+    font-size: 14.5px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+    max-width: 32ch;
+  }
+
+  /* ─── 04 WHO IT'S FOR ──────────────────────────────────────────── */
+
+  .audiences {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+  .aud {
+    padding: 0 40px;
+  }
+  .aud:first-child { padding-left: 0; padding-right: 56px; }
+  .aud:last-child {
+    padding-right: 0;
+    padding-left: 56px;
+    border-left: var(--hair);
+  }
+  .aud-tag {
+    display: inline-block;
+    padding: 4px 10px;
+    border: 1px solid var(--ink);
+    margin-bottom: 28px;
+  }
+  .aud h3 {
+    font-family: var(--serif);
+    font-size: clamp(28px, 2.8vw, 36px);
+    font-weight: 500;
+    line-height: 1.1;
+    margin-bottom: 32px;
+    letter-spacing: -0.01em;
+    max-width: 18ch;
+  }
+  .aud-list {
+    list-style: none;
+  }
+  .aud-list li {
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    gap: 12px;
+    padding: 18px 0;
+    border-top: var(--hair);
+    align-items: baseline;
+  }
+  .aud-list li:last-child { border-bottom: var(--hair); }
+  .aud-list .li-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--ink-soft);
+    padding-top: 2px;
+  }
+  .aud-list .li-text {
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  .aud-list .li-text strong {
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  /* ─── 05 TRUST ─────────────────────────────────────────────────── */
+
+  .trust-grid {
+    display: grid;
+    grid-template-columns: 80px 1fr 220px;
+    gap: 56px;
+    align-items: start;
+    padding-top: 14px;
+    border-top: var(--hair-strong);
+  }
+  .trust-body {
+    font-family: var(--serif);
+    font-size: clamp(20px, 2vw, 26px);
+    line-height: 1.4;
+    font-weight: 500;
+    max-width: 36ch;
+    letter-spacing: -0.005em;
+  }
+  .trust-body em { font-style: italic; color: var(--seal); }
+
+  .trust-meta {
+    display: grid;
+    gap: 16px;
+    margin-top: 32px;
+  }
+  .trust-row {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 20px;
+    padding: 12px 0;
+    border-top: var(--hair);
+    font-size: 13.5px;
+  }
+  .trust-row:last-child { border-bottom: var(--hair); }
+  .trust-row .k {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    padding-top: 2px;
+  }
+
+  /* the seal — institutional stamp graphic */
+  .seal {
+    width: 180px; height: 180px;
+    margin-left: auto;
+    position: relative;
+  }
+  .seal svg { width: 100%; height: 100%; }
+  .seal circle { fill: none; stroke: var(--seal); stroke-width: 1; }
+  .seal text {
+    fill: var(--seal);
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+  .seal .seal-mark {
+    fill: var(--seal);
+  }
+  .seal .seal-inner {
+    font-family: "Cormorant Garamond", serif;
+    font-size: 14px;
+    font-style: italic;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  /* ─── 06 EARLY ACCESS ──────────────────────────────────────────── */
+
+  .form-section {
+    background: var(--paper-2);
+    /* slight column shift for visual rhythm */
+  }
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 56px;
+    align-items: start;
+  }
+  .form-lede h2 {
+    /* override the section-head h2 styling already applied above */
+  }
+  .form-lede p {
+    font-size: 15.5px;
+    color: var(--ink-soft);
+    max-width: 38ch;
+    line-height: 1.55;
+  }
+
+  .form-card {
+    border: 1px solid var(--ink);
+    background: var(--paper);
+    padding: 36px;
+  }
+  .form-card .form-meta {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: var(--hair);
+    padding-bottom: 12px;
+    margin-bottom: 28px;
+  }
+  .role-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    margin-bottom: 24px;
+    border: 1px solid var(--ink);
+  }
+  .role-toggle button {
+    background: var(--paper);
+    border: none;
+    border-right: 1px solid var(--ink);
+    padding: 14px 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+    text-align: left;
+    position: relative;
+  }
+  .role-toggle button:last-child { border-right: none; }
+  .role-toggle button:hover { background: var(--paper-2); }
+  .role-toggle button.active {
+    background: var(--seal);
+    color: var(--paper);
+  }
+  .role-toggle button .role-num {
+    display: block;
+    font-size: 9px;
+    opacity: 0.6;
+    margin-bottom: 4px;
+  }
+
+  .field-label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 8px;
+  }
+  .field-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--ink);
+    padding: 10px 0;
+    font-family: var(--sans);
+    font-size: 17px;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.2s ease;
+  }
+  .field-input:focus { border-bottom-color: var(--seal); }
+  .field-input::placeholder { color: var(--ink-faint); }
+
+  .submit-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 28px;
+  }
+  .submit-btn {
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    padding: 14px 24px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.1s ease;
+    min-width: 180px;
+    text-align: center;
+  }
+  .submit-btn:hover { background: var(--seal); }
+  .submit-btn:active { transform: translateY(1px); }
+  .submit-btn:disabled { cursor: default; opacity: 0.7; }
+
+  .form-confirm {
+    display: none;
+    padding: 12px 0;
+  }
+  .form-confirm.visible { display: block; }
+  .form-confirm .confirm-display {
+    font-family: var(--serif);
+    font-size: 28px;
+    font-weight: 500;
+    line-height: 1.2;
+    margin-bottom: 12px;
+    letter-spacing: -0.005em;
+  }
+  .form-confirm .confirm-display em { font-style: italic; color: var(--seal); }
+  .form-confirm p {
+    font-size: 14.5px;
+    color: var(--ink-soft);
+    max-width: 40ch;
+  }
+
+  .form-fine {
+    margin-top: 18px;
+    font-size: 12px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+  }
+
+  /* ─── 07 FOOTER ────────────────────────────────────────────────── */
+
+  footer {
+    border-top: var(--hair-strong);
+    padding-top: 36px;
+    padding-bottom: 36px;
+  }
+  .foot-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 32px;
+    align-items: end;
+  }
+  .foot-mark {
+    font-family: var(--serif);
+    font-size: 18px;
+    font-weight: 500;
+  }
+  .foot-mid {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .foot-mid a {
+    color: var(--ink-soft);
+    text-decoration: none;
+    border-bottom: 1px solid var(--ink-faint);
+    padding-bottom: 1px;
+  }
+  .foot-mid a:hover { color: var(--ink); }
+  .foot-end {
+    justify-self: end;
+  }
+
+  /* ─── motion: section fade-in on scroll ────────────────────────── */
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(14px);
+    transition: opacity 0.9s ease, transform 0.9s ease;
+  }
+  .reveal.in {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* language cross-fade */
+  .lang-fade {
+    transition: opacity 0.18s ease;
+  }
+  .lang-fade.fading { opacity: 0; }
+
+  /* ─── responsive ───────────────────────────────────────────────── */
+
+  @media (max-width: 860px) {
+    .problems { grid-template-columns: 1fr; }
+    .problem { border-left: none; border-top: var(--hair); padding: 28px 0; padding-left: 0; }
+    .problem:first-child { border-top: none; padding-top: 0; }
+
+    .mechanics { grid-template-columns: 1fr; }
+    .mech { border-left: none; border-top: var(--hair); padding: 32px 0; }
+    .mech:first-child { border-top: none; }
+
+    .what-lede { padding-left: 0; }
+
+    .audiences { grid-template-columns: 1fr; gap: 0; }
+    .aud:first-child { padding: 0 0 40px 0; }
+    .aud:last-child { padding: 40px 0 0 0; border-left: none; border-top: var(--hair); }
+
+    .trust-grid { grid-template-columns: 1fr; gap: 32px; }
+    .seal { margin-left: 0; }
+
+    .form-grid { grid-template-columns: 1fr; gap: 40px; }
+    .form-card { padding: 24px; }
+
+    .section-head { grid-template-columns: 56px 1fr; gap: 16px; }
+
+    .foot-grid { grid-template-columns: 1fr; gap: 16px; text-align: left; }
+    .foot-mid, .foot-end { text-align: left; justify-self: start; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reveal, .lang-fade { transition: none; }
+    html { scroll-behavior: auto; }
+  }
+</style>
+</head>
+
+<body>
+
+<!-- ═══════ 00 NAV ═══════════════════════════════════════════════════ -->
+<nav class="nav">
+  <div class="wrap nav-inner">
+    <a href="#" class="wordmark" aria-label="Leasel home">Leasel</a>
+    <div class="lang" role="group" aria-label="Language">
+      <button data-lang="en" class="active" aria-pressed="true">EN</button>
+      <span class="sep">/</span>
+      <button data-lang="fr" aria-pressed="false">FR</button>
+    </div>
+  </div>
+</nav>
+
+<main class="lang-fade" id="main">
+
+  <!-- ═══════ 01 HERO ═══════════════════════════════════════════════ -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-meta">
+        <span class="meta meta--ink" data-i18n="hero.tag">Pre-launch · Luxembourg · 2026</span>
+        <span class="num">01 / 06</span>
+      </div>
+      <h1 data-i18n-html="hero.h1">
+        Renting in Luxembourg is competitive.<br>
+        Your <em>application</em> shouldn't be the obstacle.
+      </h1>
+      <p class="hero-sub" data-i18n="hero.sub">
+        Leasel is a portable, verified rental dossier. Build it once. Share a single link with landlords and agencies, on demand, with full consent and revocation. No more compiling the same five PDFs for every viewing.
+      </p>
+      <div class="hero-foot">
+        <span class="meta" data-i18n="hero.note">A document of intent, not a marketing page.</span>
+        <span class="meta">↓</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ 02 THE PROBLEM ═══════════════════════════════════════ -->
+  <section class="section reveal">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="num">02</span>
+        <h2 data-i18n="p.h2">The mechanics of the Luxembourg rental market are not in the tenant's favour.</h2>
+      </div>
+
+      <div class="problems">
+        <article class="problem">
+          <div class="stat">15–20<span class="stat-unit" data-i18n="p.s1unit">applications</span></div>
+          <h3 data-i18n="p.s1h">A listing receives 15–20 applications within 48 hours.</h3>
+          <p data-i18n="p.s1p">A well-priced apartment in Luxembourg City is taken in one to three weeks; in Kirchberg or Limpertsberg, often within days. Speed matters more than fit.</p>
+        </article>
+        <article class="problem">
+          <div class="stat">47<span class="stat-unit">%</span></div>
+          <h3 data-i18n="p.s2h">Nearly half the workforce is cross-border or expat.</h3>
+          <p data-i18n="p.s2p">225,000 cross-border workers and a foreign resident population of 47% means most renters arrive without a local network, a French CDI, or a familiar dossier format.</p>
+        </article>
+        <article class="problem">
+          <div class="stat">~2<span class="stat-unit">%</span></div>
+          <h3 data-i18n="p.s3h">Vacancy below two percent. Below 1.5% in prime areas.</h3>
+          <p data-i18n="p.s3p">One of the tightest residential markets in Europe. Landlords screen on signal quality, not patience. The slowest applicant loses by default.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ 03 WHAT LEASEL IS ═══════════════════════════════════ -->
+  <section class="section reveal">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="num">03</span>
+        <h2 data-i18n="w.h2">A verified rental identity. Built once. Owned by you.</h2>
+      </div>
+
+      <p class="what-lede" data-i18n-html="w.lede">
+        Think of it as a <em>passport</em> for renting — your documents, your income, your references, verified once and shared on demand through a single revocable link.
+      </p>
+
+      <div class="mechanics">
+        <article class="mech">
+          <div class="mech-head">
+            <span class="meta" data-i18n="w.m1tag">01 · Build</span>
+            <!-- icon: stacked documents -->
+            <svg class="mech-icon" viewBox="0 0 44 44" aria-hidden="true">
+              <rect x="8"  y="6"  width="24" height="30"/>
+              <rect x="12" y="10" width="24" height="30"/>
+              <line x1="17" y1="18" x2="31" y2="18"/>
+              <line x1="17" y1="24" x2="31" y2="24"/>
+              <line x1="17" y1="30" x2="26" y2="30"/>
+            </svg>
+          </div>
+          <h3 data-i18n="w.m1h">Build</h3>
+          <p data-i18n="w.m1p">Upload identity, income, employment, and references through a guided form. Only what's legally required, never more.</p>
+        </article>
+
+        <article class="mech">
+          <div class="mech-head">
+            <span class="meta" data-i18n="w.m2tag">02 · Verify</span>
+            <!-- icon: checked seal -->
+            <svg class="mech-icon" viewBox="0 0 44 44" aria-hidden="true">
+              <circle cx="22" cy="22" r="14"/>
+              <polyline points="15,22 20,27 30,17"/>
+              <circle cx="22" cy="22" r="18" stroke-dasharray="2 3"/>
+            </svg>
+          </div>
+          <h3 data-i18n="w.m2h">Verify</h3>
+          <p data-i18n="w.m2p">Documents are checked through certified KYC partners and, optionally, LuxTrust. The result is a stamped dossier landlords can trust at a glance.</p>
+        </article>
+
+        <article class="mech">
+          <div class="mech-head">
+            <span class="meta" data-i18n="w.m3tag">03 · Share</span>
+            <!-- icon: link / arrow out -->
+            <svg class="mech-icon" viewBox="0 0 44 44" aria-hidden="true">
+              <rect x="8" y="14" width="28" height="20"/>
+              <line x1="14" y1="22" x2="30" y2="22"/>
+              <polyline points="26,18 30,22 26,26"/>
+              <line x1="22" y1="14" x2="22" y2="6"/>
+              <polyline points="18,10 22,6 26,10"/>
+            </svg>
+          </div>
+          <h3 data-i18n="w.m3h">Share</h3>
+          <p data-i18n="w.m3p">Send a single link per application. Each share is logged, time-limited, and revocable. The agency receives a verified dossier; you keep the audit trail.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ 04 WHO IT'S FOR ══════════════════════════════════════ -->
+  <section class="section reveal">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="num">04</span>
+        <h2 data-i18n="a.h2">Built for both sides of the application.</h2>
+      </div>
+
+      <div class="audiences">
+        <div class="aud">
+          <span class="aud-tag meta meta--ink" data-i18n="a.tag1">For tenants</span>
+          <h3 data-i18n="a.h1">Stop rebuilding your dossier from scratch.</h3>
+          <ul class="aud-list">
+            <li>
+              <span class="li-num">A.</span>
+              <span class="li-text" data-i18n-html="a.l1a"><strong>One dossier, every application.</strong> Reuse a verified profile across every listing, every agency, every search.</span>
+            </li>
+            <li>
+              <span class="li-num">B.</span>
+              <span class="li-text" data-i18n-html="a.l1b"><strong>Consent and control.</strong> Time-limited links, revocable any time, with a complete record of who opened what.</span>
+            </li>
+            <li>
+              <span class="li-num">C.</span>
+              <span class="li-text" data-i18n-html="a.l1c"><strong>Rental history that travels.</strong> Build a verifiable record across tenancies — proof of reliability that compounds over time.</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="aud">
+          <span class="aud-tag meta meta--ink" data-i18n="a.tag2">For agencies</span>
+          <h3 data-i18n="a.h3">Pre-verified applicants. Hours back per listing.</h3>
+          <ul class="aud-list">
+            <li>
+              <span class="li-num">A.</span>
+              <span class="li-text" data-i18n-html="a.l2a"><strong>Standardised, complete dossiers.</strong> No more chasing missing payslips or expired IDs across email threads.</span>
+            </li>
+            <li>
+              <span class="li-num">B.</span>
+              <span class="li-text" data-i18n-html="a.l2b"><strong>Verification at a glance.</strong> Identity, income, and employment are checked before the application reaches you.</span>
+            </li>
+            <li>
+              <span class="li-num">C.</span>
+              <span class="li-text" data-i18n-html="a.l2c"><strong>CRM-friendly.</strong> Built to plug into existing agency workflows, not replace them.</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ 05 TRUST & COMPLIANCE ════════════════════════════════ -->
+  <section class="section reveal">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="num">05</span>
+        <h2 data-i18n="t.h2">Compliance is the product, not an appendix.</h2>
+      </div>
+
+      <div class="trust-grid">
+        <span class="num">§ 5.1</span>
+
+        <div>
+          <p class="trust-body" data-i18n-html="t.body">
+            Leasel is built on the assumption that a rental dossier contains <em>some of the most sensitive data</em> a person shares routinely. The architecture reflects that — minimal collection, certified verification partners, EU-resident infrastructure, and per-share consent logging by default.
+          </p>
+
+          <div class="trust-meta">
+            <div class="trust-row">
+              <span class="k">Framework</span>
+              <span data-i18n="t.r1">GDPR · Law of 1 August 2018 · CNPD-supervised</span>
+            </div>
+            <div class="trust-row">
+              <span class="k">Identity</span>
+              <span data-i18n="t.r2">Certified KYC providers; LuxTrust-compatible attestation</span>
+            </div>
+            <div class="trust-row">
+              <span class="k">Hosting</span>
+              <span data-i18n="t.r3">EU data residency. No third-country transfers.</span>
+            </div>
+            <div class="trust-row">
+              <span class="k">Consent</span>
+              <span data-i18n="t.r4">Per-share, revocable, audit-logged. Never blanket.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- institutional seal: a passport-stamp visual to anchor the trust section -->
+        <div class="seal" aria-hidden="true">
+          <svg viewBox="0 0 200 200">
+            <circle cx="100" cy="100" r="92"/>
+            <circle cx="100" cy="100" r="78"/>
+            <!-- circular text along outer ring -->
+            <defs>
+              <path id="seal-arc-top" d="M 100,100 m -84,0 a 84,84 0 1,1 168,0" />
+              <path id="seal-arc-bot" d="M 100,100 m 84,0 a 84,84 0 1,1 -168,0" />
+            </defs>
+            <text>
+              <textPath href="#seal-arc-top" startOffset="50%" text-anchor="middle">Verified Tenant Dossier</textPath>
+            </text>
+            <text>
+              <textPath href="#seal-arc-bot" startOffset="50%" text-anchor="middle">Luxembourg · MMXXVI</textPath>
+            </text>
+            <!-- center mark -->
+            <text class="seal-inner" x="100" y="96" text-anchor="middle">Leasel</text>
+            <line x1="76" y1="108" x2="124" y2="108" stroke="#3F5B5A" stroke-width="0.75"/>
+            <text x="100" y="124" text-anchor="middle" style="font-size:7px; letter-spacing:0.18em;">№ 001</text>
+            <circle cx="100" cy="100" r="2" class="seal-mark"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ 06 EARLY ACCESS ══════════════════════════════════════ -->
+  <section class="section form-section reveal" id="early">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="num">06</span>
+        <h2 data-i18n="f.h2">Register your interest.</h2>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-lede">
+          <p data-i18n="f.lede">Leasel launches in Luxembourg in 2026. Early registrants receive priority access, founding-tenant pricing where applicable, and a single email when the platform opens — nothing else.</p>
+          <br>
+          <p data-i18n="f.lede2">Tell us which side of the application you're on, and we'll keep you in the loop accordingly.</p>
+        </div>
+
+        <div class="form-card" id="form-card">
+          <div class="form-meta">
+            <span class="meta" data-i18n="f.formtag">Form · Early access · 2026</span>
+            <span class="meta">№ 001</span>
+          </div>
+
+          <form id="early-form" novalidate>
+            <span class="field-label" data-i18n="f.role">I am a…</span>
+            <div class="role-toggle" role="group" aria-label="Role">
+              <button type="button" data-role="tenant" class="active" aria-pressed="true">
+                <span class="role-num">A.</span>
+                <span data-i18n="f.tenant">Tenant</span>
+              </button>
+              <button type="button" data-role="agency" aria-pressed="false">
+                <span class="role-num">B.</span>
+                <span data-i18n="f.agency">Agency / Landlord</span>
+              </button>
+            </div>
+
+            <span class="field-label" data-i18n="f.emaillabel">Email address</span>
+            <input
+              type="email"
+              class="field-input"
+              id="email"
+              name="email"
+              required
+              autocomplete="email"
+              placeholder="name@domain.lu"
+            />
+
+            <div class="submit-row">
+              <span class="meta" data-i18n="f.fineform">Single email. Unsubscribe anytime.</span>
+              <button type="submit" class="submit-btn" id="submit-btn" data-i18n="f.submit">Register interest</button>
+            </div>
+          </form>
+
+          <div class="form-confirm" id="form-confirm" aria-live="polite">
+            <p class="confirm-display" data-i18n-html="f.confirm">Noted. We'll be in touch when <em>Leasel</em> opens.</p>
+            <p data-i18n="f.confirmsub">Your registration is recorded. We won't share your address, and we won't email you for anything other than launch.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ═══════ 07 FOOTER ═══════════════════════════════════════════════ -->
+<footer>
+  <div class="wrap foot-grid">
+    <div class="foot-mark">Leasel<span style="display:inline-block;width:4px;height:4px;background:var(--seal);border-radius:50%;margin-left:4px;transform:translateY(-2px);"></span></div>
+    <div class="foot-mid">
+      <span data-i18n="foot.copy">Leasel — Luxembourg, 2026</span>
+      &nbsp;·&nbsp;
+      <a href="#" data-i18n="foot.privacy">Privacy</a>
+    </div>
+    <div class="foot-end">
+      <div class="lang" role="group" aria-label="Language">
+        <button data-lang="en" class="active" aria-pressed="true">EN</button>
+        <span class="sep">/</span>
+        <button data-lang="fr" aria-pressed="false">FR</button>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ─────────────────────────────────────────────────────────────────────
+   COPY DICTIONARY — EN + FR
+   French is written native, not translated. Voice is intentionally a
+   bit dry and institutional in both languages.
+   ───────────────────────────────────────────────────────────────────── */
+
+const COPY = {
+  en: {
+    "hero.tag": "Pre-launch · Luxembourg · 2026",
+    "hero.h1":  "Renting in Luxembourg is competitive.<br>Your <em>application</em> shouldn't be the obstacle.",
+    "hero.sub": "Leasel is a portable, verified rental dossier. Build it once. Share a single link with landlords and agencies, on demand, with full consent and revocation. No more compiling the same five PDFs for every viewing.",
+    "hero.note":"A document of intent, not a marketing page.",
+
+    "p.h2":   "The mechanics of the Luxembourg rental market are not in the tenant's favour.",
+    "p.s1unit":"applications",
+    "p.s1h":  "A listing receives 15–20 applications within 48 hours.",
+    "p.s1p":  "A well-priced apartment in Luxembourg City is taken in one to three weeks; in Kirchberg or Limpertsberg, often within days. Speed matters more than fit.",
+    "p.s2h":  "Nearly half the workforce is cross-border or expat.",
+    "p.s2p":  "225,000 cross-border workers and a foreign resident population of 47% means most renters arrive without a local network, a French CDI, or a familiar dossier format.",
+    "p.s3h":  "Vacancy below two percent. Below 1.5% in prime areas.",
+    "p.s3p":  "One of the tightest residential markets in Europe. Landlords screen on signal quality, not patience. The slowest applicant loses by default.",
+
+    "w.h2":   "A verified rental identity. Built once. Owned by you.",
+    "w.lede": "Think of it as a <em>passport</em> for renting — your documents, your income, your references, verified once and shared on demand through a single revocable link.",
+    "w.m1tag":"01 · Build",
+    "w.m1h":  "Build",
+    "w.m1p":  "Upload identity, income, employment, and references through a guided form. Only what's legally required, never more.",
+    "w.m2tag":"02 · Verify",
+    "w.m2h":  "Verify",
+    "w.m2p":  "Documents are checked through certified KYC partners and, optionally, LuxTrust. The result is a stamped dossier landlords can trust at a glance.",
+    "w.m3tag":"03 · Share",
+    "w.m3h":  "Share",
+    "w.m3p":  "Send a single link per application. Each share is logged, time-limited, and revocable. The agency receives a verified dossier; you keep the audit trail.",
+
+    "a.h2":   "Built for both sides of the application.",
+    "a.tag1": "For tenants",
+    "a.h1":   "Stop rebuilding your dossier from scratch.",
+    "a.l1a":  "<strong>One dossier, every application.</strong> Reuse a verified profile across every listing, every agency, every search.",
+    "a.l1b":  "<strong>Consent and control.</strong> Time-limited links, revocable any time, with a complete record of who opened what.",
+    "a.l1c":  "<strong>Rental history that travels.</strong> Build a verifiable record across tenancies — proof of reliability that compounds over time.",
+    "a.tag2": "For agencies",
+    "a.h3":   "Pre-verified applicants. Hours back per listing.",
+    "a.l2a":  "<strong>Standardised, complete dossiers.</strong> No more chasing missing payslips or expired IDs across email threads.",
+    "a.l2b":  "<strong>Verification at a glance.</strong> Identity, income, and employment are checked before the application reaches you.",
+    "a.l2c":  "<strong>CRM-friendly.</strong> Built to plug into existing agency workflows, not replace them.",
+
+    "t.h2":   "Compliance is the product, not an appendix.",
+    "t.body": "Leasel is built on the assumption that a rental dossier contains <em>some of the most sensitive data</em> a person shares routinely. The architecture reflects that — minimal collection, certified verification partners, EU-resident infrastructure, and per-share consent logging by default.",
+    "t.r1":   "GDPR · Law of 1 August 2018 · CNPD-supervised",
+    "t.r2":   "Certified KYC providers; LuxTrust-compatible attestation",
+    "t.r3":   "EU data residency. No third-country transfers.",
+    "t.r4":   "Per-share, revocable, audit-logged. Never blanket.",
+
+    "f.h2":      "Register your interest.",
+    "f.lede":    "Leasel launches in Luxembourg in 2026. Early registrants receive priority access, founding-tenant pricing where applicable, and a single email when the platform opens — nothing else.",
+    "f.lede2":   "Tell us which side of the application you're on, and we'll keep you in the loop accordingly.",
+    "f.formtag": "Form · Early access · 2026",
+    "f.role":    "I am a…",
+    "f.tenant":  "Tenant",
+    "f.agency":  "Agency / Landlord",
+    "f.emaillabel":"Email address",
+    "f.fineform":"Single email. Unsubscribe anytime.",
+    "f.submit":  "Register interest",
+    "f.submitting":"Noted.",
+    "f.confirm": "Noted. We'll be in touch when <em>Leasel</em> opens.",
+    "f.confirmsub":"Your registration is recorded. We won't share your address, and we won't email you for anything other than launch.",
+
+    "foot.copy":   "Leasel — Luxembourg, 2026",
+    "foot.privacy":"Privacy"
+  },
+
+  fr: {
+    "hero.tag": "Avant-première · Luxembourg · 2026",
+    "hero.h1":  "Louer au Luxembourg est une course.<br>Votre <em>dossier</em> ne devrait pas vous ralentir.",
+    "hero.sub": "Leasel est un dossier locatif portable et vérifié. Constituez-le une fois. Partagez-le avec les agences et propriétaires en un seul lien, à la demande, avec consentement et révocation à tout moment. Plus de PDFs à rassembler pour chaque visite.",
+    "hero.note":"Un document d'intention, pas une page commerciale.",
+
+    "p.h2":   "Le marché locatif luxembourgeois ne joue pas en faveur du locataire.",
+    "p.s1unit":"candidatures",
+    "p.s1h":  "Une annonce reçoit 15 à 20 candidatures en 48 heures.",
+    "p.s1p":  "Un appartement bien situé en ville part en une à trois semaines ; à Kirchberg ou Limpertsberg, souvent en quelques jours. La rapidité prime sur l'adéquation.",
+    "p.s2h":  "Près de la moitié de la main-d'œuvre est frontalière ou expatriée.",
+    "p.s2p":  "225 000 travailleurs frontaliers et 47 % de résidents étrangers : la plupart des locataires arrivent sans réseau local, sans CDI français, sans format de dossier familier aux propriétaires.",
+    "p.s3h":  "Vacance sous les 2 %. Moins de 1,5 % dans les quartiers prisés.",
+    "p.s3p":  "L'un des marchés résidentiels les plus tendus d'Europe. Les propriétaires sélectionnent sur la qualité du signal, pas sur la patience. Le plus lent perd par défaut.",
+
+    "w.h2":   "Une identité locative vérifiée. Constituée une fois. Vous appartient.",
+    "w.lede": "Pensez-y comme à un <em>passeport</em> pour louer — vos documents, vos revenus, vos références, vérifiés une fois puis partagés à la demande via un lien unique et révocable.",
+    "w.m1tag":"01 · Constituer",
+    "w.m1h":  "Constituer",
+    "w.m1p":  "Téléversez identité, revenus, emploi, références via un parcours guidé. Strictement ce que la loi exige, jamais davantage.",
+    "w.m2tag":"02 · Vérifier",
+    "w.m2h":  "Vérifier",
+    "w.m2p":  "Les documents sont contrôlés via des partenaires KYC certifiés et, en option, LuxTrust. Le résultat : un dossier estampillé, lisible d'un coup d'œil.",
+    "w.m3tag":"03 · Partager",
+    "w.m3h":  "Partager",
+    "w.m3p":  "Un seul lien par candidature. Chaque partage est tracé, limité dans le temps, révocable. L'agence reçoit un dossier vérifié ; vous gardez l'historique.",
+
+    "a.h2":   "Conçu pour les deux côtés de la candidature.",
+    "a.tag1": "Pour les locataires",
+    "a.h1":   "Cessez de reconstituer votre dossier à chaque fois.",
+    "a.l1a":  "<strong>Un dossier, toutes vos candidatures.</strong> Réutilisez un profil vérifié pour chaque annonce, chaque agence, chaque recherche.",
+    "a.l1b":  "<strong>Consentement et contrôle.</strong> Liens à durée limitée, révocables à tout instant, avec un journal complet des consultations.",
+    "a.l1c":  "<strong>Un historique qui vous suit.</strong> Constituez un parcours locatif vérifiable — une preuve de fiabilité qui se renforce dans le temps.",
+    "a.tag2": "Pour les agences",
+    "a.h3":   "Des candidats pré-vérifiés. Des heures gagnées par annonce.",
+    "a.l2a":  "<strong>Des dossiers standardisés et complets.</strong> Plus de fiches de paie manquantes ni de pièces d'identité expirées à pourchasser.",
+    "a.l2b":  "<strong>Vérification immédiate.</strong> Identité, revenus et emploi sont contrôlés avant que la candidature ne vous parvienne.",
+    "a.l2c":  "<strong>Compatible avec votre CRM.</strong> Conçu pour s'intégrer à vos outils existants, non pour les remplacer.",
+
+    "t.h2":   "La conformité est le produit, pas une annexe.",
+    "t.body": "Leasel part du principe qu'un dossier locatif contient <em>certaines des données les plus sensibles</em> qu'une personne partage régulièrement. L'architecture en tient compte — collecte minimale, partenaires de vérification certifiés, infrastructure résidente UE, et journal de consentement par partage, par défaut.",
+    "t.r1":   "RGPD · Loi du 1er août 2018 · supervisé par la CNPD",
+    "t.r2":   "Prestataires KYC certifiés ; attestation compatible LuxTrust",
+    "t.r3":   "Données hébergées dans l'UE. Aucun transfert hors UE.",
+    "t.r4":   "Par partage, révocable, journalisé. Jamais en bloc.",
+
+    "f.h2":      "Manifestez votre intérêt.",
+    "f.lede":    "Leasel ouvre au Luxembourg en 2026. Les inscrits recevront un accès prioritaire, une tarification fondatrice le cas échéant, et un seul e-mail à l'ouverture — rien d'autre.",
+    "f.lede2":   "Indiquez de quel côté de la candidature vous êtes ; nous vous tiendrons informé en conséquence.",
+    "f.formtag": "Formulaire · Accès anticipé · 2026",
+    "f.role":    "Je suis…",
+    "f.tenant":  "Locataire",
+    "f.agency":  "Agence / Propriétaire",
+    "f.emaillabel":"Adresse e-mail",
+    "f.fineform":"Un seul e-mail. Désinscription à tout moment.",
+    "f.submit":  "Manifester mon intérêt",
+    "f.submitting":"Noté.",
+    "f.confirm": "Noté. Nous reviendrons vers vous à l'ouverture de <em>Leasel</em>.",
+    "f.confirmsub":"Votre inscription est enregistrée. Nous ne partagerons pas votre adresse et ne vous écrirons que pour le lancement.",
+
+    "foot.copy":   "Leasel — Luxembourg, 2026",
+    "foot.privacy":"Confidentialité"
+  }
+};
+
+/* ─── language toggle ──────────────────────────────────────────────── */
+
+let currentLang = "en";
+
+function applyLang(lang) {
+  const dict = COPY[lang];
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    const key = el.getAttribute("data-i18n");
+    if (dict[key] != null) el.textContent = dict[key];
+  });
+  document.querySelectorAll("[data-i18n-html]").forEach(el => {
+    const key = el.getAttribute("data-i18n-html");
+    if (dict[key] != null) el.innerHTML = dict[key];
+  });
+  document.documentElement.setAttribute("lang", lang);
+  // sync nav and footer toggles
+  document.querySelectorAll(".lang button").forEach(b => {
+    const active = b.dataset.lang === lang;
+    b.classList.toggle("active", active);
+    b.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+  currentLang = lang;
+}
+
+function setLang(lang) {
+  if (lang === currentLang) return;
+  const main = document.getElementById("main");
+  main.classList.add("fading");
+  setTimeout(() => {
+    applyLang(lang);
+    main.classList.remove("fading");
+  }, 180);
+}
+
+document.querySelectorAll(".lang button").forEach(btn => {
+  btn.addEventListener("click", () => setLang(btn.dataset.lang));
+});
+
+/* ─── scroll reveal ────────────────────────────────────────────────── */
+
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add("in");
+      io.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.12, rootMargin: "0px 0px -40px 0px" });
+
+document.querySelectorAll(".reveal").forEach(el => io.observe(el));
+
+/* ─── role toggle in form ──────────────────────────────────────────── */
+
+let selectedRole = "tenant";
+document.querySelectorAll(".role-toggle button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    selectedRole = btn.dataset.role;
+    document.querySelectorAll(".role-toggle button").forEach(b => {
+      const active = b === btn;
+      b.classList.toggle("active", active);
+      b.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+  });
+});
+
+/* ─── form submit ──────────────────────────────────────────────────── */
+
+const form = document.getElementById("early-form");
+const submitBtn = document.getElementById("submit-btn");
+const formConfirm = document.getElementById("form-confirm");
+const emailInput = document.getElementById("email");
+
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const email = emailInput.value.trim();
+  if (!isValidEmail(email)) {
+    emailInput.focus();
+    emailInput.style.borderBottomColor = "#A33";
+    setTimeout(() => emailInput.style.borderBottomColor = "", 1200);
+    return;
+  }
+
+  // typographic state transition — no spinner
+  submitBtn.disabled = true;
+  submitBtn.textContent = COPY[currentLang]["f.submitting"];
+
+  setTimeout(() => {
+    // log the "submission" — visible in console as the brief specifies
+    const submission = {
+      email,
+      role: selectedRole,
+      lang: currentLang,
+      ts: new Date().toISOString()
+    };
+    console.log("[Leasel · early access submission]", submission);
+
+    // swap form → confirmation
+    form.style.transition = "opacity 0.2s ease";
+    form.style.opacity = "0";
+    setTimeout(() => {
+      form.style.display = "none";
+      formConfirm.classList.add("visible");
+      formConfirm.style.opacity = "0";
+      requestAnimationFrame(() => {
+        formConfirm.style.transition = "opacity 0.4s ease";
+        formConfirm.style.opacity = "1";
+      });
+    }, 220);
+  }, 380);
+});
+
+function isValidEmail(s) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+}
+
+/* init */
+applyLang("en");
+</script>
+
+</body>
+</html>
