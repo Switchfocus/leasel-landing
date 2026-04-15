@@ -206,18 +206,19 @@
     line-height: 1.8;
     margin-bottom: 22px;
   }
-  /* typewriter cursor */
+  /* memo paragraphs — staggered fade-in (js-ready guard keeps text
+     visible if JS never fires) */
   .typewriter {
-    white-space: pre-wrap;
+    transition: opacity 0.55s ease, transform 0.55s ease;
   }
-  .typewriter::after {
-    content: "▊";
-    color: var(--brick);
-    margin-left: 1px;
-    animation: blink 1.1s steps(2) infinite;
+  .js-ready .typewriter:not(.in) {
+    opacity: 0;
+    transform: translateY(5px);
   }
-  .typewriter.done::after { display: none; }
-  @keyframes blink { 50% { opacity: 0; } }
+  .typewriter.in {
+    opacity: 1;
+    transform: none;
+  }
 
   .memo-sig {
     margin-top: 48px;
@@ -788,8 +789,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .reveal { opacity: 1 !important; transform: none !important; transition: none; }
-    .typewriter::after { display: none; }
+    .reveal, .typewriter { opacity: 1 !important; transform: none !important; transition: none; }
   }
 </style>
 </head>
@@ -831,13 +831,13 @@
     </div>
 
     <div class="memo-body">
-      <p class="typewriter" data-type="Luxembourg has the tightest rental market in Western Europe. Vacancy under 2 percent. A well-priced apartment receives 15 to 20 applications inside 48 hours, and is gone inside a week. Most renters lose by being slower than the next applicant, not by being a worse fit."></p>
+      <p class="typewriter">Luxembourg has the tightest rental market in Western Europe. Vacancy under 2 percent. A well-priced apartment receives 15 to 20 applications inside 48 hours, and is gone inside a week. Most renters lose by being slower than the next applicant, not by being a worse fit.</p>
 
-      <p class="typewriter" data-type="The renters lining up are not local. 47 percent of the workforce crosses a border each morning. Another 47 percent of residents are foreign. Most arrive without a French CDI, without a Luxembourgish payslip history, without a network. They re-compile the same dossier — five PDFs, three languages, one cover letter — for every single viewing."></p>
+      <p class="typewriter">The renters lining up are not local. 47 percent of the workforce crosses a border each morning. Another 47 percent of residents are foreign. Most arrive without a French CDI, without a Luxembourgish payslip history, without a network. They re-compile the same dossier — five PDFs, three languages, one cover letter — for every single viewing.</p>
 
-      <p class="typewriter" data-type="No tenant-owned, portable, verified rental dossier exists in Luxembourg, in Belgium, or in Germany. France has DossierFacile (state-run, 250,000 accounts). The UK has Canopy. Continental Europe — nothing."></p>
+      <p class="typewriter">No tenant-owned, portable, verified rental dossier exists in Luxembourg, in Belgium, or in Germany. France has DossierFacile (state-run, 250,000 accounts). The UK has Canopy. Continental Europe — nothing.</p>
 
-      <p class="typewriter" data-type="That is the gap. This document is what I plan to do about it."></p>
+      <p class="typewriter">That is the gap. This document is what I plan to do about it.</p>
     </div>
 
     <div class="memo-sig">
@@ -1210,55 +1210,21 @@ setTimeout(() => {
   document.querySelectorAll("[data-reveal]:not(.in)").forEach(el => el.classList.add("in"));
 }, 2500);
 
-/* ─── (2) typewriter ─────────────────────────────────────────── */
-const SPEED_MS = 20;
-
-function typeInto(el) {
-  const txt = el.dataset.type || "";
-  el.dataset.typing = "1";
-  el.textContent = "";
-  let i = 0;
-  const tick = () => {
-    if (i >= txt.length) {
-      el.classList.add("done");
-      return;
-    }
-    el.textContent += txt[i++];
-    setTimeout(tick, SPEED_MS);
-  };
-  tick();
-}
-
-/* type each paragraph in sequence so they appear one after another */
-const memoIO = new IntersectionObserver((entries) => {
-  entries.forEach(e => {
-    if (!e.isIntersecting) return;
-    memoIO.disconnect();
-    const paras = Array.from(document.querySelectorAll(".memo .typewriter"));
-    let chain = Promise.resolve();
-    paras.forEach(p => {
-      chain = chain.then(() => new Promise(resolve => {
-        const txt = p.dataset.type || "";
-        p.textContent = "";
-        let i = 0;
-        const tick = () => {
-          if (i >= txt.length) {
-            p.classList.add("done");
-            // brief pause between paragraphs
-            setTimeout(resolve, 220);
-            return;
-          }
-          p.textContent += txt[i++];
-          setTimeout(tick, SPEED_MS);
-        };
-        tick();
-      }));
-    });
-  });
-}, { threshold: 0.25 });
-
+/* ─── (2) memo paragraph stagger ────────────────────────────── */
+/* Paragraphs fade in one after another, 280ms apart. Much faster
+   than typewriter and doesn't hold the reader hostage. */
 const memoSection = document.querySelector(".memo");
-if (memoSection) memoIO.observe(memoSection);
+if (memoSection) {
+  const paras = Array.from(memoSection.querySelectorAll(".typewriter"));
+  const memoIO = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (!e.isIntersecting) return;
+      memoIO.disconnect();
+      paras.forEach((p, i) => setTimeout(() => p.classList.add("in"), i * 280));
+    });
+  }, { threshold: 0.2 });
+  memoIO.observe(memoSection);
+}
 
 /* ─── (3) watermark parallax ─────────────────────────────────── */
 const wms = document.querySelectorAll("[data-wm]");
